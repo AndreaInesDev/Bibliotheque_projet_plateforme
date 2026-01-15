@@ -109,14 +109,14 @@ public class Main {
     }
 
     private static void empruntLivre(){
-        System.out.println("ID du livre à emprunter");
-        int id_livre = scanner.nextInt();
-        scanner.nextLine();
 
         System.out.println("ID du membre qui emprunte le livre");
         int id_membre = scanner.nextInt();
         scanner.nextLine();
 
+        System.out.println("ID du livre à emprunter");
+        int id_livre = scanner.nextInt();
+        scanner.nextLine();
 
         Livres livres = new Livres(id_livre, "", "", "",0);
         Membres membres = new Membres(id_membre, "", "", "", new Date());

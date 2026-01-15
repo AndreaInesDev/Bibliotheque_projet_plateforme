@@ -79,8 +79,8 @@ public class Emprunts {
                 " dateEmprunt=" + dateEmprunt +
                 ", dateRetour=" + dateRetour +
                 ", dateRetourEffective=" + dateRetourEffective +
-                ", membresId=" + membresId +
-                ", livresId=" + livresId +
+                ", membresId=" + membresId.getId_lecteur() +
+                ", livresId=" + livresId.getId_livre() +
                 '}'
         );
     }
