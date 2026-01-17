@@ -18,8 +18,10 @@ public class Main {
             System.out.println("4. Supprimer un livre");
             System.out.println("5. Emprunter un livre");
             System.out.println("6. Liste de tous les emprunts");
-            System.out.println("7. Ajouter un membre");
-            System.out.println("8. Liste de tous les membres");
+            System.out.println("7. Liste de tous les livres en retard");
+            System.out.println("8. Retourner un livre");
+            System.out.println("9. Ajouter un membre");
+            System.out.println("10.Liste de tous les membres");
             System.out.println("0. Quitter");
             System.out.print("Choix : ");
             int reponse = scanner.nextInt();
@@ -52,10 +54,18 @@ public class Main {
                     break;
 
                 case 7:
-                    ajouterMembre();
+                    livreEnRetard();
                     break;
 
                 case 8:
+                    retournerLivre();
+                    break;
+
+                case 9:
+                    ajouterMembre();
+                    break;
+
+                case 10:
                     listeMembre();
                     break;
 
@@ -124,9 +134,9 @@ public class Main {
         long date = 24 * 60 * 60 * 1000;
 
         Date dateAjourdhui = new Date(System.currentTimeMillis());
-        Date dateRetour = new Date(System.currentTimeMillis() + 10 * date);
+        Date dateRetour = new Date(System.currentTimeMillis() + 2 * date);
 
-        Emprunts emprunts = new Emprunts(dateAjourdhui, dateRetour, dateRetour, membres, livres );
+        Emprunts emprunts = new Emprunts(dateAjourdhui, dateRetour, null, membres, livres, 0.0 );
 
         empruntDAO.AjouterEmprunt(emprunts);
 
@@ -172,5 +182,36 @@ public class Main {
             }
         }
 
+    }
+
+    private  static  void  retournerLivre(){
+        System.out.println("Veuillez entrez l'ID de votre empprunt");
+
+        int idEmprunt = scanner.nextInt();
+        scanner.nextLine();
+        empruntDAO.retounerLivre(idEmprunt);
+    }
+
+    private static void livreEnRetard(){
+        System.out.println("==== liste de tous les emprunts en retard");
+
+        List<Emprunts> empruntsList = empruntDAO.liveRetarder();
+
+        if (empruntsList.isEmpty()){
+            System.out.println("Aucun retard n'est enregistré");
+            return;
+        }
+
+        for (Emprunts emprunts : empruntsList){
+
+           long jours = emprunts.calculerJoursRetard();
+
+           if (jours > 0){
+               System.out.println("Livre : " + emprunts.getLivresId().getId_livre());
+               System.out.println("Jours de retard : " + jours);
+               System.out.println("Amende à payer : " + emprunts.calculerAmende(100) + " FCFA");
+           }
+            emprunts.afficherInfos();
+        }
     }
 }

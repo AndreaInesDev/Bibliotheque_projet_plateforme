@@ -1,7 +1,6 @@
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -114,7 +113,8 @@ public class EmpruntDAO {
                         rs.getDate("dateRetour"),
                         rs.getDate("dateRetourEffective"),
                         membres,
-                        livres
+                        livres,
+                        rs.getInt("amande_paye")
                 );
 
                 emprunts.add(emprunts1);
@@ -127,17 +127,101 @@ public class EmpruntDAO {
         return emprunts;
     }
 
-    public void retounerLivre(int emprunId){
-        String idEmprunt = "SELECT id_livre FROM Emprunt WHERE id = ?";
-        int idLivre = -1 ;
+    public void retounerLivre(int emprunId) {
+        String sqlSelect = "SELECT id_livre, dateEmprunt, dateRetour, dateRetourEffective FROM Emprunt WHERE id = ?";
 
-        try (PreparedStatement pst = connection.prepareStatement(idEmprunt)){
-            ResultSet rs = pst.executeQuery();
-            while (rs.next()){
-                rs.getInt(1, idLivre)
+        // Variables temporaires pour le calcul
+        int idLivre = -1;
+        double amendeCalculee = 0;
+
+        try (PreparedStatement pst = connection.prepareStatement(sqlSelect)) {
+            pst.setInt(1, emprunId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    if (rs.getDate("dateRetourEffective") != null) {
+                        System.out.println("Ce livre a déjà été retourné");
+                        return;
+                    }
+
+                    idLivre = rs.getInt("id_livre");
+
+                    // --- CALCUL DE L'AMENDE ---
+                    // On crée un objet temporaire avec les dates de la BD pour utiliser vos méthodes
+                    Emprunts temp = new Emprunts(
+                            rs.getDate("dateEmprunt"),
+                            rs.getDate("dateRetour"),
+                            new java.util.Date(), // Date effective = aujourd'hui
+                            null, null,
+                            rs.getInt("amande_paye")// On n'a pas besoin du membre/livre complet ici
+                    );
+
+                    amendeCalculee = temp.calculerAmende(100); // 100 FCFA par jour
+                } else {
+                    System.out.println("Aucun emprunt n'existe avec cet ID");
+                    return;
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Erreur: " + e.getMessage());
+        }
+
+        // --- MISE À JOUR DE LA BASE DE DONNÉES ---
+        String updateEmprunt = "UPDATE Emprunt SET dateRetourEffective = ?, amande_paye = ? WHERE id = ?";
+        String updateStock = "UPDATE Livres SET nbre_exemplaire = nbre_exemplaire + 1 WHERE id = ?";
+
+        try {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement pstE = connection.prepareStatement(updateEmprunt)) {
+                pstE.setDate(1, new java.sql.Date(System.currentTimeMillis()));
+                pstE.setDouble(2, amendeCalculee); // Enregistre l'amende calculée
+                pstE.setInt(3, emprunId);
+                pstE.executeUpdate();
+            }
+
+            try (PreparedStatement pstS = connection.prepareStatement(updateStock)) {
+                pstS.setInt(1, idLivre);
+                pstS.executeUpdate();
+            }
+
+            connection.commit();
+            System.out.println("Livre retourné avec succès. Amende enregistrée : " + amendeCalculee + " FCFA");
+
+        } catch (SQLException e) {
+            try { connection.rollback(); } catch (SQLException ex) {}
+            throw new RuntimeException("Erreur lors du retour : " + e.getMessage());
         }
     }
+
+    public List<Emprunts> liveRetarder(){
+        List<Emprunts> empruntsList = new ArrayList<>();
+
+        String sql = "SELECT * FROM Emprunt WHERE (dateRetourEffective > dateRetour) OR (dateRetourEffective IS NULL AND dateRetour < CURRENT_DATE)";
+
+        try(PreparedStatement pst = connection.prepareStatement(sql);
+            ResultSet rs = pst.executeQuery()) {
+
+            while (rs.next()){
+                Livres livres = new Livres(rs.getInt("id_livre"));
+                Membres membres = new Membres(rs.getInt("id_membre"));
+                Emprunts emprunts = new Emprunts(
+                        rs.getInt("id"),
+                        rs.getDate("dateEmprunt"),
+                        rs.getDate("dateRetour"),
+                        rs.getDate("dateRetourEffective"),
+                        membres,
+                        livres,
+                        rs.getInt("amande_paye"));
+
+                empruntsList.add(emprunts);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur: " + e.getMessage());
+        }
+
+        return empruntsList;
+    }
+
+
 }
