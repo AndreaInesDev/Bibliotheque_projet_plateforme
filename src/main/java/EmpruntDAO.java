@@ -128,7 +128,7 @@ public class EmpruntDAO {
     }
 
     public void retounerLivre(int emprunId) {
-        String sqlSelect = "SELECT id_livre, dateEmprunt, dateRetour, dateRetourEffective FROM Emprunt WHERE id = ?";
+        String sqlSelect = "SELECT id_livre, dateEmprunt, dateRetour, dateRetourEffective, amande_paye FROM Emprunt WHERE id = ?";
 
         // Variables temporaires pour le calcul
         int idLivre = -1;
@@ -152,7 +152,7 @@ public class EmpruntDAO {
                             rs.getDate("dateRetour"),
                             new java.util.Date(), // Date effective = aujourd'hui
                             null, null,
-                            rs.getInt("amande_paye")// On n'a pas besoin du membre/livre complet ici
+                            rs.getDouble("amande_paye")
                     );
 
                     amendeCalculee = temp.calculerAmende(100); // 100 FCFA par jour
